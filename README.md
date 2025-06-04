@@ -1,104 +1,59 @@
-# ActiveCampaign Webhook Handler for Render
+# ActiveCampaign Webhook Handler
 
-This is a production-ready webhook handler for ActiveCampaign, optimized for deployment on Render.com.
+Production-ready webhook handler for ActiveCampaign on Render.
 
-## Features
+## Quick Deploy
 
-- ✅ Automatic database initialization (SQLite)
-- ✅ Webhook signature verification
-- ✅ Comprehensive error handling and logging
-- ✅ Health check endpoint for monitoring
-- ✅ Test endpoint for development
-- ✅ Logs viewer (protected with token)
+1. Push these files to your GitHub repo root:
+   - `webhook_render.py`
+   - `requirements.txt`
+   - This README.md
 
-## Quick Deploy to Render
+2. In Render:
+   - Create New > Web Service
+   - Connect your GitHub repo
+   - **Leave Root Directory blank** (use repo root)
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `gunicorn webhook_render:app`
 
-### Option 1: Deploy with Render Button (Easiest)
+3. Add environment variables in Render:
+   - `AC_WEBHOOK_SECRET` = `CorvusSolutions`
+   - `ADMIN_TOKEN` = (click Generate to create random token)
 
-1. Push this folder to a GitHub repository
-2. Click "New +" in Render dashboard
-3. Select "Web Service"
-4. Connect your GitHub repository
-5. Use these settings:
-   - **Name**: activecampaign-webhook
-   - **Root Directory**: src/unified/render-webhook (if in subdirectory)
-   - **Environment**: Python 3
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn webhook_render:app`
-
-### Option 2: Manual Setup
-
-1. Create a new Web Service on Render
-2. Connect to your GitHub repository
-3. Configure environment variables:
-   - `AC_WEBHOOK_SECRET`: CorvusSolutions (or your secret)
-   - `ADMIN_TOKEN`: (auto-generate for security)
 4. Deploy!
 
-## Environment Variables
+## Your Webhook URL
 
-- `AC_WEBHOOK_SECRET`: Webhook secret for signature verification (default: "CorvusSolutions")
-- `ADMIN_TOKEN`: Token for accessing the logs endpoint
-- `PORT`: Port to run on (Render sets this automatically)
-
-## Endpoints
-
-- `POST /webhook/activecampaign` - Main webhook endpoint
-- `GET /webhook/health` - Health check (Render uses this)
-- `POST /webhook/test` - Test endpoint
-- `GET /webhook/logs` - View recent logs (requires Authorization header)
-- `GET /` - Service info
-
-## ActiveCampaign Configuration
-
-1. After deployment, copy your Render URL (e.g., `https://your-app.onrender.com`)
-2. In ActiveCampaign:
-   - Go to Settings → Developer → Webhooks
-   - Add new webhook
-   - URL: `https://your-app.onrender.com/webhook/activecampaign`
-   - Secret: CorvusSolutions (or your custom secret)
-   - Events: Select the events you want to track
-
-## Testing
-
-1. Use the test endpoint:
-```bash
-curl -X POST https://your-app.onrender.com/webhook/test \
-  -H "Content-Type: application/json" \
-  -d '{"type":"contact_add","contact":{"email":"test@example.com"}}'
+After deployment, your webhook URL will be:
+```
+https://YOUR-APP-NAME.onrender.com/webhook/activecampaign
 ```
 
-2. View logs:
+## Configure ActiveCampaign
+
+1. Go to ActiveCampaign > Settings > Developer > Webhooks
+2. Add New Webhook:
+   - URL: Your Render webhook URL (above)
+   - Secret: CorvusSolutions
+   - Events: Select contact events you want to track
+
+## Test Your Webhook
+
 ```bash
-curl https://your-app.onrender.com/webhook/logs \
+# Test endpoint (replace with your URL)
+curl -X POST https://YOUR-APP.onrender.com/webhook/test \
+  -H "Content-Type: application/json" \
+  -d '{"type":"contact_add","contact":{"email":"test@example.com"}}'
+
+# View logs (use your ADMIN_TOKEN)
+curl https://YOUR-APP.onrender.com/webhook/logs \
   -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
 ```
 
-## Database
+## Endpoints
 
-The webhook uses SQLite which stores data in `webhook_data.db`. This file persists across deployments on Render's paid plans. For the free tier, consider using Render's PostgreSQL addon instead.
-
-## Monitoring
-
-- Check `/webhook/health` for service status
-- Use `/webhook/logs` to view recent webhook activity
-- Render provides automatic monitoring and alerts
-
-## Troubleshooting
-
-1. **500 Errors**: Check Render logs for detailed error messages
-2. **403 Forbidden**: Verify webhook secret matches ActiveCampaign
-3. **No data**: Check that ActiveCampaign is sending to the correct URL
-
-## Local Development
-
-```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Run locally
-python webhook_render.py
-
-# Test with ngrok
-ngrok http 8080
-```
+- `/` - Service info
+- `/webhook/activecampaign` - Main webhook endpoint
+- `/webhook/health` - Health check
+- `/webhook/test` - Test webhook
+- `/webhook/logs` - View recent logs (requires auth)
