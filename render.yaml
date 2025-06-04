@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: activecampaign-webhook
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn webhook_render:app"
+    envVars:
+      - key: AC_WEBHOOK_SECRET
+        value: CorvusSolutions
+      - key: ADMIN_TOKEN
+        generateValue: true
+    healthCheckPath: /webhook/health
+    autoDeploy: false
