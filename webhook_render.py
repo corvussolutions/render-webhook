@@ -200,26 +200,49 @@ def handle_webhook():
     try:
         # Log raw request for debugging
         logger.info(f"Received webhook - Headers: {dict(request.headers)}")
+        logger.info(f"Content-Type: {request.content_type}")
         
-        webhook_data = request.get_json()
+        # ActiveCampaign sends form data, not JSON
+        if request.content_type and 'application/x-www-form-urlencoded' in request.content_type:
+            # Parse form data
+            webhook_data = {}
+            for key, value in request.form.items():
+                try:
+                    # Try to parse as JSON if it looks like JSON
+                    if value.startswith('{') and value.endswith('}'):
+                        webhook_data[key] = json.loads(value)
+                    else:
+                        webhook_data[key] = value
+                except json.JSONDecodeError:
+                    webhook_data[key] = value
+                    
+            logger.info(f"Parsed form data keys: {list(webhook_data.keys())}")
+            
+        elif request.content_type and 'application/json' in request.content_type:
+            # Handle JSON data
+            webhook_data = request.get_json()
+        else:
+            # Try both methods
+            webhook_data = request.get_json(silent=True) or dict(request.form)
         
         if not webhook_data:
-            logger.error("No JSON data in webhook request")
+            logger.error("No data in webhook request")
+            logger.info(f"Raw form data: {dict(request.form)}")
+            logger.info(f"Raw data: {request.data[:500]}")
             return jsonify({'error': 'No data provided'}), 400
         
-        logger.info(f"Processing webhook: {json.dumps(webhook_data)[:500]}")
+        logger.info(f"Processing webhook data: {str(webhook_data)[:500]}")
         
         # Process the webhook
         result = webhook_handler.process_webhook(webhook_data)
         
         return jsonify(result), 200
         
-    except json.JSONDecodeError as e:
-        logger.error(f"JSON decode error: {e}")
-        return jsonify({'error': 'Invalid JSON'}), 400
     except Exception as e:
         logger.error(f"Webhook processing error: {e}", exc_info=True)
-        return jsonify({'error': 'Internal server error'}), 500
+        logger.info(f"Request form data: {dict(request.form)}")
+        logger.info(f"Request data: {request.data[:200]}")
+        return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
 
 @app.route('/webhook/health', methods=['GET'])
