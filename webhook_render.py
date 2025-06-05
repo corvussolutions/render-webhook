@@ -15,11 +15,16 @@ import hashlib
 import hmac
 from functools import wraps
 
-# Configure logging
+# Configure logging with immediate flushing
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    force=True
 )
+
+# Force logging to flush immediately
+for handler in logging.root.handlers:
+    handler.flush = lambda: None
 logger = logging.getLogger(__name__)
 
 class RenderWebhookHandler:
@@ -243,11 +248,24 @@ def health_check():
         }), 503
 
 
-@app.route('/webhook/test', methods=['POST'])
+@app.route('/webhook/test', methods=['GET', 'POST'])
 def test_webhook():
     """Test endpoint for development"""
     
-    # Example test payload
+    # Log that test endpoint was hit
+    logger.info(f"=== TEST ENDPOINT HIT - Method: {request.method} ===")
+    print(f"=== TEST ENDPOINT HIT - Method: {request.method} ===", flush=True)
+    
+    if request.method == 'GET':
+        # For GET requests, return a simple test page
+        return jsonify({
+            'message': 'Test endpoint is working!',
+            'method': 'GET',
+            'timestamp': datetime.now().isoformat(),
+            'instructions': 'Send POST request with JSON data to test webhook processing'
+        })
+    
+    # For POST requests, process webhook data
     test_data = request.get_json() or {
         'type': 'contact_update',
         'contact': {
@@ -258,7 +276,14 @@ def test_webhook():
         }
     }
     
+    logger.info(f"Test data: {json.dumps(test_data)}")
+    print(f"Test data: {json.dumps(test_data)}", flush=True)
+    
     result = webhook_handler.process_webhook(test_data)
+    
+    logger.info(f"Test result: {json.dumps(result)}")
+    print(f"Test result: {json.dumps(result)}", flush=True)
+    
     return jsonify(result)
 
 
