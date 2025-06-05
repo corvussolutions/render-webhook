@@ -110,8 +110,10 @@ class RenderWebhookHandler:
         # Extract contact information
         email = contact_data.get('email')
         if not email:
-            # Try alternate locations for email
-            email = webhook_data.get('email') or webhook_data.get('contact_email')
+            # Try alternate locations for email (including ActiveCampaign form format)
+            email = (webhook_data.get('email') or 
+                    webhook_data.get('contact_email') or 
+                    webhook_data.get('contact[email]'))
         
         if email:
             result['contact_email'] = email
